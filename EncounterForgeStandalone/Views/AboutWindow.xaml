@@ -1,0 +1,75 @@
+<Window x:Class="EncounterForgeStandalone.Views.AboutWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Style="{StaticResource AppWindowStyle}"
+        Icon="/Assets/app.ico"
+        Title="About Encounter Forge"
+        Width="420"
+        SizeToContent="Height"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner">
+
+    <Window.Resources>
+        <Style x:Key="LinkStyle" TargetType="Hyperlink">
+            <Setter Property="Foreground" Value="{StaticResource AccentGoldBrush}" />
+            <Setter Property="TextDecorations" Value="Underline" />
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="52" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0" Background="{StaticResource SurfaceBrush}"
+            BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
+            <TextBlock Text="ABOUT" Foreground="{StaticResource AccentBrush}"
+                 FontSize="14" FontWeight="Bold"
+                 VerticalAlignment="Center" Margin="20,0" />
+        </Border>
+
+        <StackPanel Grid.Row="1" Margin="20,16,20,20">
+
+            <Border Style="{StaticResource CardStyle}" Margin="0,0,0,12">
+                <TextBlock TextWrapping="Wrap" FontSize="12" LineHeight="20"
+                   Foreground="{StaticResource TextPrimaryBrush}">
+          Encounter Forge generates calibrated D&amp;D 5e encounters on demand. Set your party size, level, difficulty, and theme. It builds stat blocks and handles the combat math so you can run it at the table without prep.
+                </TextBlock>
+            </Border>
+
+            <Border Style="{StaticResource CardStyle}">
+                <StackPanel>
+                    <TextBlock TextWrapping="Wrap" FontSize="12" LineHeight="20"
+                       Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,12">
+              I appreciate you checking out Encounter Forge! Originally designed as a Foundry VTT module, I designed this stand alone tool to help playtest and get feedback for those that don`t use Foundry and want to help verify this different method of building encounters.
+                    </TextBlock>
+                    <TextBlock TextWrapping="Wrap" FontSize="12" LineHeight="20"
+                       Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,12">
+                        If you like it or want to give feedback, consider visiting my Github and/or supporting the project at the following links. Thanks for being here!
+                    </TextBlock>
+                    <TextBlock Text="LINKS" Style="{StaticResource SectionLabelStyle}" Margin="0,0,0,10" />
+
+                    <TextBlock FontSize="13" Margin="0,0,0,8">
+            <Hyperlink Style="{StaticResource LinkStyle}"
+                       NavigateUri="https://patreon.com/Elemor"
+                       RequestNavigate="OnNavigate">Patreon</Hyperlink>
+                    </TextBlock>
+
+                    <TextBlock FontSize="13" Margin="0,0,0,8">
+            <Hyperlink Style="{StaticResource LinkStyle}"
+                       NavigateUri="https://foundryvtt.com/community/elemor/packages"
+                       RequestNavigate="OnNavigate">Foundry Modules</Hyperlink>
+                    </TextBlock>
+
+                    <TextBlock FontSize="13">
+            <Hyperlink Style="{StaticResource LinkStyle}"
+                       NavigateUri="https://github.com/ElemorSeru/"
+                       RequestNavigate="OnNavigate">GitHub</Hyperlink>
+                    </TextBlock>
+                </StackPanel>
+            </Border>
+
+        </StackPanel>
+    </Grid>
+</Window>

@@ -126,7 +126,12 @@ class StatBlockComponent : IComponent
                    SectionHeader(body, "Actions");
 
                    foreach (var action in _c.Actions)
-                       AbilityBlock(body, action.Name, BuildActionText(action));
+                   {
+                       var actionName = string.IsNullOrEmpty(action.Recharge)
+                           ? action.Name
+                           : $"{action.Name} (Recharge {action.Recharge})";
+                       AbilityBlock(body, actionName, BuildActionText(action));
+                   }
 
                    var legendaryActions = _c.Traits.Where(t => t.LegendaryType == "action").ToList();
                    var lairActions = _c.Traits.Where(t => t.LegendaryType == "lair").ToList();
@@ -239,19 +244,37 @@ class StatBlockComponent : IComponent
 
     string BuildActionText(ActionData action)
     {
-        if (action.ResolvedDamage == null) return action.Description;
+        var saveDc = 8 + _c.ProfBonus + StatMod(_c.Stats.Wis);
+        var desc = (action.Description ?? "").Replace("{dc}", saveDc.ToString());
 
-        var dmgFormula = action.ResolvedDamage[0];
-        var dmgType = action.ResolvedDamage.Length > 1 ? action.ResolvedDamage[1] : "damage";
-        var avg = (int)Math.Round(CombatEstimator.DiceAverage(dmgFormula));
-        var attackStat = action.ActionType == "mwak" ? _c.Stats.Str : _c.Stats.Dex;
-        var toHit = _c.ProfBonus + StatMod(attackStat);
-        var toHitStr = toHit >= 0 ? $"+{toHit}" : toHit.ToString();
-        var rangeStr = action.Range <= 5 ? $"reach {action.Range} ft." : $"range {action.Range} ft.";
-        var attackLabel = action.ActionType == "mwak" ? "Melee Weapon Attack" : "Ranged Weapon Attack";
-        var suffix = string.IsNullOrWhiteSpace(action.Description) ? "" : " " + action.Description;
+        var hasResolvedDamage = action.ResolvedDamage != null;
+        var dmgFormula = hasResolvedDamage ? action.ResolvedDamage![0] : "";
+        var dmgType = hasResolvedDamage && action.ResolvedDamage!.Length > 1 ? action.ResolvedDamage[1] : "damage";
+        var avg = hasResolvedDamage ? (int)Math.Round(CombatEstimator.DiceAverage(dmgFormula)) : 0;
 
-        return $"{attackLabel}: {toHitStr} to hit, {rangeStr}, one target. Hit: {avg} ({dmgFormula}) {dmgType} damage.{suffix}";
+        if (action.ActionType is "mwak" or "rwak" or "rsak")
+        {
+            var attackStat = action.ActionType == "mwak" ? _c.Stats.Str : _c.Stats.Dex;
+            var toHit = _c.ProfBonus + StatMod(attackStat);
+            var toHitStr = toHit >= 0 ? $"+{toHit}" : toHit.ToString();
+            var rangeStr = action.Range <= 5 ? $"reach {action.Range} ft." : $"range {action.Range} ft.";
+            var label = action.ActionType == "mwak" ? "Melee Weapon Attack" : "Ranged Weapon Attack";
+            var suffix = string.IsNullOrWhiteSpace(desc) ? "" : " " + desc;
+            if (!hasResolvedDamage) return $"{label}: {toHitStr} to hit, {rangeStr}, one target.{suffix}";
+            return $"{label}: {toHitStr} to hit, {rangeStr}, one target. Hit: {avg} ({dmgFormula}) {dmgType} damage.{suffix}";
+        }
+
+        if (action.ActionType == "save")
+        {
+            var dmgLine = hasResolvedDamage
+                ? $"Damage: {avg} ({dmgFormula}) {dmgType} on a failed save, half on a success."
+                : "";
+            if (string.IsNullOrWhiteSpace(desc)) return string.IsNullOrWhiteSpace(dmgLine) ? "-" : dmgLine;
+            return string.IsNullOrWhiteSpace(dmgLine) ? desc : $"{desc} {dmgLine}";
+        }
+
+        // util, summon, heal, etc.
+        return string.IsNullOrWhiteSpace(desc) ? "-" : desc;
     }
 
     string ResolveDesc(TraitData trait)

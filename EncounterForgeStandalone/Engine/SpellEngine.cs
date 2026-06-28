@@ -82,9 +82,10 @@ static class SpellEngine
             ? string.Join(", ", info.Leveled.Select(s => Capitalize(s.Name)))
             : "None";
 
-        return $"Spellcasting. {creatureName} uses {stat} as its spellcasting ability (spell save DC {info.SpellDc}, {bonus} to hit with spell attacks). " +
+        return $"Spellcasting. {creatureName} is an innate spellcaster. Its spellcasting ability is {stat} " +
+               $"(spell save DC {info.SpellDc}, {bonus} to hit with spell attacks). " +
                $"Cantrips (at will): {cantripNames}. " +
-               $"1st level (3 slots): {leveledNames}.";
+               $"Spells (1/day each): {leveledNames}.";
     }
 
     static string Capitalize(string s) => s.Length == 0 ? s : char.ToUpper(s[0]) + s[1..];

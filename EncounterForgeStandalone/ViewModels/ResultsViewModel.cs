@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using EncounterForgeStandalone.Engine;
 using EncounterForgeStandalone.Export;
 using EncounterForgeStandalone.Models;
 using Microsoft.Win32;
@@ -9,29 +10,55 @@ namespace EncounterForgeStandalone.ViewModels;
 
 partial class ResultsViewModel : ObservableObject
 {
-    public EncounterResult Result { get; }
-    public List<CreatureCardViewModel> Creatures { get; }
+    EncounterResult _result;
 
-    [ObservableProperty] string _partyDprHp;
-    [ObservableProperty] string _groupDprHp;
-    [ObservableProperty] string _roundsText;
-    [ObservableProperty] string _outcomeText;
-    [ObservableProperty] string _outcomeKey;
+    [ObservableProperty] List<CreatureCardViewModel> _creatures = [];
+    [ObservableProperty] string _partyDprHp = "";
+    [ObservableProperty] string _groupDprHp = "";
+    [ObservableProperty] string _groupAc = "";
+    [ObservableProperty] string _roundsText = "";
+    [ObservableProperty] string _outcomeText = "";
+    [ObservableProperty] string _outcomeKey = "";
     [ObservableProperty] bool _isExporting;
+    [ObservableProperty] bool _isRegenerating;
 
     public ResultsViewModel(EncounterResult result)
     {
-        Result = result;
+        _result = result;
+        Populate(result);
+    }
+
+    void Populate(EncounterResult result)
+    {
+        _result = result;
         Creatures = result.Results.Select(r => new CreatureCardViewModel(r)).ToList();
 
         var groupHp = result.Results.Sum(r => r.Profile.Hp);
         var groupDpr = result.Results.Sum(r => r.Profile.Dpr);
+        var avgAc = result.Results.Count > 0
+            ? (int)Math.Round(result.Results.Average(r => r.Profile.Ac))
+            : 0;
 
         PartyDprHp = $"{result.Party.Dpr:F1} DPR / {(int)Math.Round(result.Party.Hp)} HP";
         GroupDprHp = $"{groupDpr:F1} DPR / {groupHp} HP";
+        GroupAc = $"AC {avgAc}";
         RoundsText = $"{result.Rounds.RoundsToDefeat:F1} / {result.Rounds.RoundsToThreaten:F1}";
         OutcomeText = OutcomeLabel(result.Outcome);
         OutcomeKey = result.Outcome;
+    }
+
+    [RelayCommand]
+    async Task Regenerate()
+    {
+        IsRegenerating = true;
+        try
+        {
+            var result = await Task.Run(() =>
+                Generator.Generate(_result.PlayerCount, _result.PlayerLevel, _result.EnemyCount,
+                    _result.Difficulty, _result.Theme, _result.Solo, _result.IntensityOffset, _result.DprFirst));
+            Populate(result);
+        }
+        finally { IsRegenerating = false; }
     }
 
     [RelayCommand]
@@ -41,9 +68,9 @@ partial class ResultsViewModel : ObservableObject
         {
             Title = "Save Stat Block",
             Filter = "PDF files (*.pdf)|*.pdf",
-            FileName = Result.Results.Count == 1
-                ? $"{Result.Results[0].Name}.pdf"
-                : $"Encounter_cnt{Result.PlayerCount}_lvl{Result.PlayerLevel}_e{Result.EnemyCount}_{DateTime.Now:yyyy-MM-dd_HH-mm-ss}.pdf",
+            FileName = _result.Results.Count == 1
+                ? $"{_result.Results[0].Name}.pdf"
+                : $"Encounter_cnt{_result.PlayerCount}_lvl{_result.PlayerLevel}_e{_result.EnemyCount}_{DateTime.Now:yyyy-MM-dd_HH-mm-ss}.pdf",
             DefaultExt = "pdf"
         };
 
@@ -52,13 +79,10 @@ partial class ResultsViewModel : ObservableObject
         IsExporting = true;
         try
         {
-            await Task.Run(() => PdfExporter.Export(Result, dlg.FileName));
+            await Task.Run(() => PdfExporter.Export(_result, dlg.FileName));
             Process.Start(new ProcessStartInfo(dlg.FileName) { UseShellExecute = true });
         }
-        finally
-        {
-            IsExporting = false;
-        }
+        finally { IsExporting = false; }
     }
 
     static string OutcomeLabel(string key) => key switch

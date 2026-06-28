@@ -19,6 +19,7 @@ partial class CalibrationViewModel : ObservableObject
     [ObservableProperty] string _offsetDisplay = "0";
     [ObservableProperty] string _stepLabel = "Default intensity";
     [ObservableProperty] List<DifficultyPreviewRow> _diffRows = [];
+    [ObservableProperty] bool _dprFirst = AppSettings.Instance.DprFirst;
 
     public bool IsDefault => Offset == 0;
     public bool IsNotDefault => Offset != 0;
@@ -64,6 +65,13 @@ partial class CalibrationViewModel : ObservableObject
     {
         Offset = 0;
         Apply();
+    }
+
+    partial void OnDprFirstChanged(bool value)
+    {
+        AppSettings.Instance.DprFirst = value;
+        AppSettings.Instance.Save();
+        IntensityChanged?.Invoke();
     }
 
     void Apply()

@@ -202,12 +202,16 @@
             BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0"
             Padding="20,14">
       <Grid>
-        <TextBlock VerticalAlignment="Center" FontSize="11"
-                   Foreground="{StaticResource TextMutedBrush}">
-          <Run Text="{Binding Theme, StringFormat='Theme: {0}'}" />
-          <Run Text=" / " Foreground="{StaticResource BorderBrush}" />
-          <Run Text="{Binding Difficulty, StringFormat='Difficulty: {0}'}" />
-        </TextBlock>
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+          <TextBlock FontSize="11" Foreground="{StaticResource TextMutedBrush}">
+            <Run Text="{Binding Theme, StringFormat='Theme: {0}'}" />
+            <Run Text=" / " Foreground="{StaticResource BorderBrush}" />
+            <Run Text="{Binding Difficulty, StringFormat='Difficulty: {0}'}" />
+          </TextBlock>
+          <TextBlock Text="{Binding IntensityLabel}" FontSize="11"
+                     Foreground="{StaticResource AccentBrush}" Margin="8,0,0,0"
+                     Visibility="{Binding HasIntensityOffset, Converter={StaticResource BoolVis}}" />
+        </StackPanel>
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
           <Button x:Name="CloseBtn" Style="{StaticResource SecondaryButtonStyle}" Content="Close"
                   Click="OnCloseClick" Padding="32,8" />

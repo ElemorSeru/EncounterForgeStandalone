@@ -27,6 +27,8 @@ partial class BuilderViewModel : ObservableObject
     [ObservableProperty] string _rounds = "-";
     [ObservableProperty] string _outcome = "-";
     [ObservableProperty] string _outcomeKey = "manageable";
+    [ObservableProperty] string _intensityLabel = "";
+    [ObservableProperty] bool _hasIntensityOffset;
 
     public bool EnemyCountVisible => !Solo;
 
@@ -110,8 +112,21 @@ partial class BuilderViewModel : ObservableObject
             Rounds = $"{r.RoundsDefeat:F1} / {r.RoundsThreaten:F1}";
             Outcome = OutcomeLabel(r.Outcome);
             OutcomeKey = r.Outcome;
+            UpdateIntensityLabel();
         }
         catch { }
+    }
+
+    void UpdateIntensityLabel()
+    {
+        var offset = AppSettings.Instance.CombatIntensity;
+        HasIntensityOffset = offset != 0;
+        IntensityLabel = offset switch
+        {
+            0 => "",
+            > 0 => $"+{offset} Intensity",
+            _ => $"{offset} Intensity"
+        };
     }
 
     [RelayCommand]
@@ -122,14 +137,14 @@ partial class BuilderViewModel : ObservableObject
         {
             var result = await Task.Run(() =>
                 Generator.Generate(_pCount, _pLevel, _eCount,
-                    Difficulty, Theme, Solo, AppSettings.Instance.CombatIntensity));
+                    Difficulty, Theme, Solo, AppSettings.Instance.CombatIntensity, AppSettings.Instance.DprFirst));
             SaveSettings();
             GenerationComplete?.Invoke(result);
         }
         finally { IsGenerating = false; }
     }
 
-    public void NotifyIntensityChanged() => UpdateReadout();
+    public void NotifyIntensityChanged() { UpdateReadout(); UpdateIntensityLabel(); }
 
     void SaveSettings()
     {

@@ -86,6 +86,26 @@
                 Height="32" Margin="2,0" />
       </UniformGrid>
 
+      <!-- DPR-First Mode -->
+      <Border Style="{StaticResource CardStyle}" Margin="0,0,0,12">
+        <StackPanel>
+          <CheckBox IsChecked="{Binding DprFirst, Mode=TwoWay}"
+                    Foreground="{StaticResource TextPrimaryBrush}"
+                    FontWeight="SemiBold" FontSize="13">
+            DPR-First Damage
+          </CheckBox>
+          <TextBlock TextWrapping="Wrap" FontSize="11" Margin="22,6,0,0"
+                     Foreground="{StaticResource TextMutedBrush}" LineHeight="17">
+            When enabled, creature damage dice are calculated directly from the encounter's
+            DPR target before any calibration. This produces creatures whose damage output
+            precisely matches the encounter budget, at the cost of less conventional dice
+            expressions. Useful for tight balance testing across party configurations.
+            When disabled, dice come from archetype tier tables and are nudged by the
+            calibrator afterward (default behavior, matches most playtests).
+          </TextBlock>
+        </StackPanel>
+      </Border>
+
       <!-- Preview table -->
       <Border Style="{StaticResource CardStyle}">
         <StackPanel>

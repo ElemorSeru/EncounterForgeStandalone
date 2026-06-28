@@ -103,6 +103,7 @@
               <ColumnDefinition Width="*" />
               <ColumnDefinition Width="*" />
               <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
             <StackPanel Grid.Column="0">
               <TextBlock Text="PARTY" Style="{StaticResource SectionLabelStyle}" FontSize="10" />
@@ -115,6 +116,11 @@
                          Foreground="{StaticResource TextPrimaryBrush}" />
             </StackPanel>
             <StackPanel Grid.Column="2">
+              <TextBlock Text="AVG AC" Style="{StaticResource SectionLabelStyle}" FontSize="10" />
+              <TextBlock Text="{Binding GroupAc}" FontSize="12" FontWeight="SemiBold"
+                         Foreground="{StaticResource TextPrimaryBrush}" />
+            </StackPanel>
+            <StackPanel Grid.Column="3">
               <TextBlock Text="ROUNDS" Style="{StaticResource SectionLabelStyle}" FontSize="10" />
               <TextBlock Text="{Binding RoundsText}" FontSize="12" FontWeight="SemiBold"
                          Foreground="{StaticResource TextPrimaryBrush}" />
@@ -135,14 +141,21 @@
         <TextBlock Text="Export to PDF to get full stat blocks for each creature."
                    Foreground="{StaticResource TextMutedBrush}" FontSize="11"
                    VerticalAlignment="Center" />
-        <Button Style="{StaticResource PrimaryButtonStyle}" HorizontalAlignment="Right"
-                Command="{Binding ExportPdfCommand}"
-                IsEnabled="{Binding IsExporting, Converter={StaticResource InvBool}}">
-          <TextBlock>
-            <Run Text="Export" />
-            <Run Text=" PDF" />
-          </TextBlock>
-        </Button>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+          <Button Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,0"
+                  Command="{Binding RegenerateCommand}"
+                  IsEnabled="{Binding IsRegenerating, Converter={StaticResource InvBool}}">
+            <TextBlock Text="Regenerate" />
+          </Button>
+          <Button Style="{StaticResource PrimaryButtonStyle}"
+                  Command="{Binding ExportPdfCommand}"
+                  IsEnabled="{Binding IsExporting, Converter={StaticResource InvBool}}">
+            <TextBlock>
+              <Run Text="Export" />
+              <Run Text=" PDF" />
+            </TextBlock>
+          </Button>
+        </StackPanel>
       </Grid>
     </Border>
   </Grid>

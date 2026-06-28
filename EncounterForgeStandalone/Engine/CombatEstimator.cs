@@ -6,6 +6,13 @@ namespace EncounterForgeStandalone.Engine;
 static class CombatEstimator
 {
     public const double HitChance = 0.65;
+    public const double SaveHitChance = 0.5;
+    public static readonly Dictionary<string, double> RechargeMultipliers = new()
+    {
+        ["5-6"] = 0.4,
+        ["5"] = 0.5,
+        ["6"] = 0.35
+    };
     const double PartyHpBase = 10;
     const double PartyHpPerLevel = 6.5;
     const double IntensityStep = 0.12;
@@ -88,7 +95,13 @@ static class CombatEstimator
         var ac = creature.Stats?.Ac ?? 0;
         var actionDpr = creature.Actions
             .Where(a => a.ResolvedDamage != null)
-            .Sum(a => DiceAverage(a.ResolvedDamage![0])) * HitChance;
+            .Sum(a =>
+            {
+                var chance = a.ActionType == "save" ? SaveHitChance : HitChance;
+                var recharge = RechargeMultipliers.TryGetValue(a.Recharge ?? "", out var r) ? r : 1.0;
+                var aoe = a.AoeTargets ?? 1;
+                return DiceAverage(a.ResolvedDamage![0]) * chance * recharge * aoe;
+            });
         var perAction = creature.Actions.Count > 0 ? actionDpr / creature.Actions.Count : 0;
         var legendaryDpr = creature.Solo ? EstimateLegendaryDpr(creature, perAction) : 0;
         var spellDpr = EstimateSpellDpr(creature);

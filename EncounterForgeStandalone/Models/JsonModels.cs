@@ -41,6 +41,9 @@ public class ActionData
     [JsonPropertyName("cr_max")] public double? CrMax { get; set; }
     [JsonPropertyName("chassis_affinity")] public List<string>? ChassisAffinity { get; set; }
     public List<string>? Tags { get; set; }
+    [JsonPropertyName("save_stat")] public string? SaveStat { get; set; }
+    [JsonPropertyName("recharge")] public string? Recharge { get; set; }
+    [JsonPropertyName("aoe_targets")] public double? AoeTargets { get; set; }
 
     // set during assembly
     [JsonIgnore] public string[]? ResolvedDamage { get; set; }

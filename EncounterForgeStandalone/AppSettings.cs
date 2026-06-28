@@ -16,6 +16,7 @@ class AppSettings
     public string Theme { get; set; } = "any";
     public bool Solo { get; set; } = false;
     public int CombatIntensity { get; set; } = 0;
+    public bool DprFirst { get; set; } = false;
 
     static AppSettings? _instance;
     public static AppSettings Instance => _instance ??= Load();

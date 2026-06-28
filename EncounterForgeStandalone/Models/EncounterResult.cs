@@ -15,4 +15,9 @@ public record EncounterResult(
     string Outcome,
     int PlayerCount,
     int PlayerLevel,
-    int EnemyCount);
+    int EnemyCount,
+    string Theme,
+    bool Solo,
+    string Difficulty,
+    int IntensityOffset,
+    bool DprFirst);

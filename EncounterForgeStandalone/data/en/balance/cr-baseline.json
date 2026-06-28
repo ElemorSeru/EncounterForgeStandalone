@@ -17,5 +17,20 @@
   "12":  { "prof": 4, "ac": 17, "hp": 243,  "attack_bonus": 8, "dpr": 77.5, "save_dc": 18 },
   "13":  { "prof": 5, "ac": 18, "hp": 258,  "attack_bonus": 8, "dpr": 83.5, "save_dc": 18 },
   "14":  { "prof": 5, "ac": 18, "hp": 273,  "attack_bonus": 8, "dpr": 89.5, "save_dc": 18 },
-  "15":  { "prof": 5, "ac": 18, "hp": 288,  "attack_bonus": 8, "dpr": 95.5, "save_dc": 18 }
+  "15":  { "prof": 5, "ac": 18, "hp": 288,  "attack_bonus": 8,  "dpr": 95.5,  "save_dc": 18 },
+  "16":  { "prof": 5, "ac": 18, "hp": 303,  "attack_bonus": 8,  "dpr": 101.5, "save_dc": 18 },
+  "17":  { "prof": 6, "ac": 19, "hp": 318,  "attack_bonus": 8,  "dpr": 107.5, "save_dc": 19 },
+  "18":  { "prof": 6, "ac": 19, "hp": 333,  "attack_bonus": 8,  "dpr": 113.5, "save_dc": 19 },
+  "19":  { "prof": 6, "ac": 19, "hp": 348,  "attack_bonus": 9,  "dpr": 119.5, "save_dc": 19 },
+  "20":  { "prof": 6, "ac": 19, "hp": 363,  "attack_bonus": 9,  "dpr": 131.5, "save_dc": 19 },
+  "21":  { "prof": 7, "ac": 19, "hp": 378,  "attack_bonus": 10, "dpr": 145.5, "save_dc": 20 },
+  "22":  { "prof": 7, "ac": 19, "hp": 393,  "attack_bonus": 10, "dpr": 154.5, "save_dc": 20 },
+  "23":  { "prof": 7, "ac": 19, "hp": 408,  "attack_bonus": 11, "dpr": 163.5, "save_dc": 20 },
+  "24":  { "prof": 7, "ac": 19, "hp": 423,  "attack_bonus": 11, "dpr": 172.5, "save_dc": 21 },
+  "25":  { "prof": 8, "ac": 19, "hp": 438,  "attack_bonus": 12, "dpr": 181.5, "save_dc": 21 },
+  "26":  { "prof": 8, "ac": 19, "hp": 453,  "attack_bonus": 12, "dpr": 190.5, "save_dc": 21 },
+  "27":  { "prof": 8, "ac": 19, "hp": 468,  "attack_bonus": 13, "dpr": 199.5, "save_dc": 22 },
+  "28":  { "prof": 8, "ac": 19, "hp": 483,  "attack_bonus": 13, "dpr": 208.5, "save_dc": 22 },
+  "29":  { "prof": 9, "ac": 19, "hp": 498,  "attack_bonus": 13, "dpr": 217.5, "save_dc": 22 },
+  "30":  { "prof": 9, "ac": 19, "hp": 513,  "attack_bonus": 14, "dpr": 226.5, "save_dc": 23 }
 }

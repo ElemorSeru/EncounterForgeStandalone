@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using EncounterForgeStandalone.Models;
 
 namespace EncounterForgeStandalone.Engine;
@@ -83,7 +84,7 @@ static class CreatureAssembler
         ["humanoid"] = 0.20, ["fey"] = 0.30, ["beast"] = 0.25
     };
 
-    public static Creature Assemble(string cr, string theme, string? forceName, bool isSolo)
+    public static Creature Assemble(string cr, string theme, string? forceName, bool isSolo, bool isSummon = false, bool dprFirst = false, double targetDpr = 0)
     {
         var chassis = PickChassis(theme);
         var tier = CrEngine.GetTier(cr);
@@ -114,10 +115,14 @@ static class CreatureAssembler
         }
 
         var actionCount = isSolo ? 3 : tier <= 1 ? 1 : tier <= 3 ? 2 : 3;
-        var actions = PickActions(cr, theme, chassis.Type, actionCount, tierKey, crNum);
+        var excludeIds = (isSolo || isSummon) ? new HashSet<string> { "summon_lesser" } : new HashSet<string>();
+        var actions = PickActions(cr, theme, chassis.Type, actionCount, tierKey, crNum, excludeIds);
 
         var spellInfo = SpellEngine.SelectSpells(theme, tier, chassis.Type, profBonus,
             stats.Int, stats.Wis, stats.Cha);
+
+        if (dprFirst && targetDpr > 0 && actions.Count > 0)
+            ApplyDprFirst(actions, spellInfo, traits, tier, isSolo, targetDpr);
 
         var name = !string.IsNullOrWhiteSpace(forceName) ? forceName.Trim() : GenerateName(theme);
         var extras = GenerateExtras(theme, chassis.Type, tier);
@@ -179,6 +184,36 @@ static class CreatureAssembler
         };
     }
 
+    static readonly HashSet<string> AttackTypes = ["mwak", "rwak", "rsak"];
+
+    static void FisherYates(List<ActionData> list)
+    {
+        for (int i = list.Count - 1; i > 0; i--)
+        {
+            int j = Random.Shared.Next(i + 1);
+            (list[i], list[j]) = (list[j], list[i]);
+        }
+    }
+
+    // themed entries interleaved 75/25 before generic "any" fallbacks — mirrors JS themedFirst()
+    static List<ActionData> ThemedFirst(List<ActionData> pool, string theme)
+    {
+        var themed = pool.Where(a => theme != "any" && (a.Tags?.Contains(theme) ?? false)).ToList();
+        var generic = pool.Where(a => !(theme != "any" && (a.Tags?.Contains(theme) ?? false))).ToList();
+        FisherYates(themed);
+        FisherYates(generic);
+        var result = new List<ActionData>();
+        int t = 0, g = 0;
+        while (t < themed.Count || g < generic.Count)
+        {
+            if (t < themed.Count && (g >= generic.Count || Random.Shared.NextDouble() < 0.75))
+                result.Add(themed[t++]);
+            else
+                result.Add(generic[g++]);
+        }
+        return result;
+    }
+
     static ChassisData PickChassis(string theme)
     {
         var filtered = theme == "any"
@@ -188,22 +223,63 @@ static class CreatureAssembler
         return pool[Random.Shared.Next(pool.Count)];
     }
 
-    static List<ActionData> PickActions(string cr, string theme, string chassisType, int count, string tierKey, double crNum)
+    static List<ActionData> PickActions(string cr, string theme, string chassisType, int count, string tierKey, double crNum, HashSet<string>? excludeIds = null)
     {
-        var available = DataLoader.Actions.Where(a =>
+        var filtered = DataLoader.Actions.Where(a =>
         {
-            if (!a.DamageTiers?.ContainsKey(tierKey) ?? true) return false;
+            if (excludeIds != null && excludeIds.Contains(a.Id)) return false;
             if (a.CrMin.HasValue && crNum < a.CrMin) return false;
             if (a.CrMax.HasValue && crNum > a.CrMax) return false;
             if (a.ChassisAffinity != null && !a.ChassisAffinity.Contains(chassisType) && !a.ChassisAffinity.Contains("any")) return false;
             if (theme != "any" && a.Tags?.Count > 0 && !a.Tags.Contains(theme) && !a.Tags.Contains("any")) return false;
             return true;
-        }).OrderBy(_ => Random.Shared.NextDouble()).Take(count).ToList();
+        }).ToList();
 
-        foreach (var action in available)
-            action.ResolvedDamage = action.DamageTiers!.TryGetValue(tierKey, out var d) ? d : action.DamageFallback;
+        bool isArtillery = chassisType == "artillery";
+        var meleePool = ThemedFirst(filtered.Where(a => a.ActionType == "mwak").ToList(), theme);
+        var rangedPool = ThemedFirst(filtered.Where(a => AttackTypes.Contains(a.ActionType) && a.ActionType != "mwak").ToList(), theme);
+        var specialPool = ThemedFirst(filtered.Where(a => !AttackTypes.Contains(a.ActionType)).ToList(), theme);
 
-        return available;
+        // Artillery archetype leads with ranged; all other chassis guarantee a melee attack first.
+        var primaryPool = isArtillery ? rangedPool : meleePool;
+        var secondaryPool = isArtillery ? meleePool : rangedPool;
+
+        ActionData? firstPick = primaryPool.Count > 0 ? primaryPool[0] : (secondaryPool.Count > 0 ? secondaryPool[0] : null);
+        int primarySkip = firstPick != null && primaryPool.Count > 0 ? 1 : 0;
+        int secondarySkip = firstPick != null && primaryPool.Count == 0 ? 1 : 0;
+
+        if (firstPick == null)
+        {
+            // Loose fallback: re-query entire dataset ignoring theme/chassis, only CR bounds and excludes.
+            var looseMelee = DataLoader.Actions.Where(a =>
+                (excludeIds == null || !excludeIds.Contains(a.Id)) &&
+                (!a.CrMin.HasValue || crNum >= a.CrMin) &&
+                (!a.CrMax.HasValue || crNum <= a.CrMax) &&
+                a.ActionType == "mwak").ToList();
+            FisherYates(looseMelee);
+            var looseRanged = DataLoader.Actions.Where(a =>
+                (excludeIds == null || !excludeIds.Contains(a.Id)) &&
+                (!a.CrMin.HasValue || crNum >= a.CrMin) &&
+                (!a.CrMax.HasValue || crNum <= a.CrMax) &&
+                AttackTypes.Contains(a.ActionType) && a.ActionType != "mwak").ToList();
+            FisherYates(looseRanged);
+            var lp = isArtillery ? looseRanged : looseMelee;
+            var ls = isArtillery ? looseMelee : looseRanged;
+            firstPick = lp.Count > 0 ? lp[0] : (ls.Count > 0 ? ls[0] : null);
+        }
+
+        var actions = new List<ActionData>();
+        if (firstPick != null) actions.Add(firstPick);
+        var specialSlots = Math.Min(count - 1, specialPool.Count);
+        actions.AddRange(specialPool.Take(specialSlots));
+        var remaining = count - actions.Count;
+        if (remaining > 0) actions.AddRange(primaryPool.Skip(primarySkip).Take(remaining));
+        if (actions.Count < count) actions.AddRange(secondaryPool.Skip(secondarySkip).Take(count - actions.Count));
+
+        foreach (var action in actions)
+            action.ResolvedDamage = (action.DamageTiers?.TryGetValue(tierKey, out var d) == true ? d : null) ?? action.DamageFallback;
+
+        return actions;
     }
 
     static (Dictionary<string, int> Skills, Dictionary<string, int> Senses, Dictionary<string, int> SpeedExtras)
@@ -282,5 +358,50 @@ static class CreatureAssembler
         List<string> prefixPool = (names.ThemePrefixes?.TryGetValue(theme, out var tp2) == true && tp2.Count > 0)
             ? tp2 : names.Prefixes;
         return $"{Pick(prefixPool)} {noun}";
+    }
+
+    // Replaces tier-based dice counts with values computed directly from the DPR target.
+    // Mirrors the module's dprFirstDamage path: targetPerActionDPR → computeDiceFromTarget().
+    static void ApplyDprFirst(List<ActionData> actions, SpellInfo? spellInfo, List<TraitData> traits, int tier, bool isSolo, double targetDpr)
+    {
+        var spellDpr = spellInfo != null
+            ? (tier <= 1 ? 1 : tier <= 3 ? 2 : tier <= 5 ? 3 : 4) * 5 * CombatEstimator.HitChance * 0.3
+            : 0;
+
+        // Legendary factor = extra DPR contribution from legendary actions per regular action slot
+        double legendaryMulti = 0;
+        if (isSolo)
+        {
+            var legendaryActions = traits.Where(t => t.LegendaryType == "action").ToList();
+            if (legendaryActions.Count > 0)
+            {
+                var avgCost = legendaryActions.Average(t => t.LegendaryCost ?? 1);
+                legendaryMulti = avgCost > 0 ? 3.0 / avgCost : 0;
+            }
+        }
+        var legendaryFactor = 1 + legendaryMulti / Math.Max(1, actions.Count);
+        var targetActionTotal = Math.Max(0, (targetDpr - spellDpr) / legendaryFactor);
+        var targetPerAction = targetActionTotal / actions.Count;
+
+        foreach (var action in actions)
+        {
+            if (action.ResolvedDamage == null) continue;
+            var chance = action.ActionType == "save" ? CombatEstimator.SaveHitChance : CombatEstimator.HitChance;
+            var recharge = CombatEstimator.RechargeMultipliers.TryGetValue(action.Recharge ?? "", out var r) ? r : 1.0;
+            var effective = chance * recharge * (action.AoeTargets ?? 1);
+            action.ResolvedDamage = [ComputeDiceFromTarget(action.ResolvedDamage[0], targetPerAction, effective), action.ResolvedDamage[1]];
+        }
+    }
+
+    // Keeps the die face from the existing formula, sets dice count to match targetDpr/effective.
+    static string ComputeDiceFromTarget(string formula, double targetDpr, double effective)
+    {
+        if (effective <= 0) return formula;
+        var m = Regex.Match(formula.Trim(), @"^(\d+)d(\d+)\s*([+-]\s*\d+)?$", RegexOptions.IgnoreCase);
+        if (!m.Success) return formula;
+        var sides = int.Parse(m.Groups[2].Value);
+        var faceAvg = (sides + 1) / 2.0;
+        var diceCount = Math.Max(1, (int)Math.Round(targetDpr / (effective * faceAvg)));
+        return $"{diceCount}d{sides}";
     }
 }

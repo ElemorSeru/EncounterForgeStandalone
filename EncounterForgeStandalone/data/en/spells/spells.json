@@ -280,7 +280,7 @@
   },
   {
     "name": "acid splash",
-    "school": "conjuration",
+    "school": "evocation",
     "cantrip": true,
     "tier_min": 1,
     "tags": [
@@ -496,7 +496,12 @@
       "elemental"
     ],
     "fallback": {
-      "type": "util"
+      "type": "save",
+      "save_stat": "dex",
+      "damage": [
+        "3d10",
+        "slashing"
+      ]
     }
   },
   {
@@ -1246,7 +1251,8 @@
       "damage": [
         "4d6",
         "psychic"
-      ]
+      ],
+      "description": "The target's Intelligence and Charisma scores become 1. It can't cast spells, activate magic items, understand language, or communicate intelligibly. It can repeat the save every 30 days."
     }
   },
   {
@@ -1404,10 +1410,13 @@
     ],
     "fallback": {
       "type": "attack",
+      "melee": true,
       "damage": [
         "1d8",
         "force"
-      ]
+      ],
+      "activation_type": "bonus",
+      "description": "Bonus Action to cast. A spectral weapon appears within range and makes an immediate melee spell attack for 1d8 Force damage. Concentration, up to 1 minute. As a Bonus Action on later turns, move it 20 feet and attack again."
     }
   },
   {
@@ -1616,7 +1625,8 @@
       "damage": [
         "0",
         "psychic"
-      ]
+      ],
+      "description": "The target is wracked with agony. Its Speed is 0, it can't take Reactions, and it has Disadvantage on attack rolls and ability checks. The target repeats the save at the end of each of its turns, ending the effect on a success."
     }
   },
   {
@@ -1769,7 +1779,7 @@
       "type": "save",
       "save_stat": "int",
       "damage": [
-        "1d6",
+        "2d8",
         "psychic"
       ]
     }
@@ -1960,10 +1970,12 @@
     ],
     "fallback": {
       "type": "attack",
+      "melee": true,
       "damage": [
-        "1d8",
+        "1d10",
         "necrotic"
-      ]
+      ],
+      "description": "Melee spell attack. On a hit, takes 1d10 Necrotic damage and can't regain Hit Points until the end of your next turn."
     }
   },
   {
@@ -1996,9 +2008,10 @@
       "humanoid"
     ],
     "fallback": {
-      "type": "attack",
+      "type": "save",
+      "save_stat": "con",
       "damage": [
-        "3d10",
+        "2d10",
         "necrotic"
       ]
     }
@@ -2065,7 +2078,8 @@
       "aberration"
     ],
     "fallback": {
-      "type": "attack",
+      "type": "save",
+      "save_stat": "con",
       "damage": [
         "0",
         "necrotic"
@@ -2129,10 +2143,12 @@
     ],
     "fallback": {
       "type": "attack",
+      "melee": true,
       "damage": [
         "3d6",
         "necrotic"
-      ]
+      ],
+      "description": "Melee spell attack, dealing {damage} damage. The caster regains HP equal to half the damage dealt."
     }
   },
   {
@@ -2193,10 +2209,12 @@
     ],
     "fallback": {
       "type": "attack",
+      "melee": true,
       "damage": [
         "0",
         "poison"
-      ]
+      ],
+      "description": "On a hit with a melee spell attack, the target becomes poisoned. After 3 failed Constitution saves, it succumbs to a disease (Blinding Sickness, Filth Fever, Flesh Rot, Mindfire, Seizure, or Slimy Doom)."
     }
   },
   {
@@ -2271,7 +2289,7 @@
   },
   {
     "name": "power word kill",
-    "school": "necromancy",
+    "school": "enchantment",
     "cantrip": false,
     "tier_min": 6,
     "tags": [
@@ -2295,6 +2313,8 @@
     ],
     "fallback": {
       "type": "attack",
+      "melee": true,
+      "description": "Melee spell attack, dealing {damage} damage. The weapon is empowered by nature magic and uses the caster's spellcasting modifier for attack and damage rolls.",
       "damage": [
         "1d8",
         "bludgeoning"

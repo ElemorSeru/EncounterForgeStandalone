@@ -42,13 +42,18 @@ static class Calibrator
 
         var remaining = targetActionTotal - ActionsDpr(creature.Actions);
         if (Math.Abs(remaining) > ActionDprTolerance)
-            ApplyFlatDamageBonus(creature.Actions, remaining);
+            ApplyDamageScale(creature.Actions, remaining);
     }
 
     static double ActionsDpr(List<ActionData> actions)
         => actions.Where(a => a.ResolvedDamage != null)
-                  .Sum(a => CombatEstimator.DiceAverage(a.ResolvedDamage![0]))
-                  * CombatEstimator.HitChance;
+                  .Sum(a =>
+                  {
+                      var chance = a.ActionType == "save" ? CombatEstimator.SaveHitChance : CombatEstimator.HitChance;
+                      var recharge = CombatEstimator.RechargeMultipliers.TryGetValue(a.Recharge ?? "", out var r) ? r : 1.0;
+                      var aoe = a.AoeTargets ?? 1;
+                      return CombatEstimator.DiceAverage(a.ResolvedDamage![0]) * chance * recharge * aoe;
+                  });
 
     static void SwapActionForDpr(Creature creature, double targetPerActionDpr)
     {
@@ -57,7 +62,22 @@ static class Calibrator
         var crNum = CrEngine.ToNumber(creature.Cr);
         var usedIds = creature.Actions.Select(a => a.Id).ToHashSet();
 
-        var candidates = DataLoader.Actions.Where(a =>
+        // Find which slot to replace before filtering candidates.
+        var replaceIdx = 0;
+        var worstDpr = double.MaxValue;
+        for (int i = 0; i < creature.Actions.Count; i++)
+        {
+            var d = creature.Actions[i].ResolvedDamage != null
+                ? CombatEstimator.DiceAverage(creature.Actions[i].ResolvedDamage![0])
+                : 0;
+            if (d < worstDpr) { worstDpr = d; replaceIdx = i; }
+        }
+
+        // If we'd be removing the only melee attack, only consider melee replacements.
+        var meleeCount = creature.Actions.Count(a => a.ActionType == "mwak");
+        var replacingLastMelee = meleeCount == 1 && creature.Actions[replaceIdx].ActionType == "mwak";
+
+        var allCandidates = DataLoader.Actions.Where(a =>
         {
             if (usedIds.Contains(a.Id)) return false;
             if (!a.DamageTiers?.ContainsKey(tierKey) ?? true) return false;
@@ -68,12 +88,19 @@ static class Calibrator
             return true;
         }).ToList();
 
+        var candidates = replacingLastMelee
+            ? allCandidates.Where(a => a.ActionType == "mwak").ToList()
+            : allCandidates;
+
         if (candidates.Count == 0) return;
 
         double ValueFn(ActionData a)
         {
             var dmg = a.DamageTiers![tierKey];
-            return CombatEstimator.DiceAverage(dmg[0]) * CombatEstimator.HitChance;
+            var chance = a.ActionType == "save" ? CombatEstimator.SaveHitChance : CombatEstimator.HitChance;
+            var recharge = CombatEstimator.RechargeMultipliers.TryGetValue(a.Recharge ?? "", out var r) ? r : 1.0;
+            var aoe = a.AoeTargets ?? 1;
+            return CombatEstimator.DiceAverage(dmg[0]) * chance * recharge * aoe;
         }
 
         var tolerance = targetPerActionDpr * 0.2;
@@ -84,44 +111,62 @@ static class Calibrator
             close = candidates.Where(a => Math.Abs(ValueFn(a) - targetPerActionDpr) <= bestDiff + 0.01).ToList();
         }
 
-        var chosen = close[Random.Shared.Next(close.Count)];
+        // prefer themed options (randomized) before touching generic pool
+        var themedClose = close.Where(a => creature.Theme != "any" && (a.Tags?.Contains(creature.Theme) ?? false)).ToList();
+        var themedAll = candidates.Where(a => creature.Theme != "any" && (a.Tags?.Contains(creature.Theme) ?? false)).ToList();
+        ActionData chosen;
+        if (themedClose.Count > 0)
+        {
+            chosen = themedClose[Random.Shared.Next(themedClose.Count)];
+        }
+        else if (themedAll.Count > 0)
+        {
+            // Widen to 40% and pick randomly to avoid funnelling to one action
+            var wideTolerance = targetPerActionDpr * 0.4;
+            var wideThemed = themedAll.Where(a => Math.Abs(ValueFn(a) - targetPerActionDpr) <= wideTolerance).ToList();
+            var pool = wideThemed.Count > 0 ? wideThemed : themedAll;
+            chosen = pool[Random.Shared.Next(pool.Count)];
+        }
+        else
+        {
+            chosen = close[Random.Shared.Next(close.Count)];
+        }
         chosen.ResolvedDamage = chosen.DamageTiers![tierKey];
 
-        var replaceIdx = 0;
-        var worstDpr = double.MaxValue;
-        for (int i = 0; i < creature.Actions.Count; i++)
-        {
-            var d = creature.Actions[i].ResolvedDamage != null
-                ? CombatEstimator.DiceAverage(creature.Actions[i].ResolvedDamage![0])
-                : 0;
-            if (d < worstDpr) { worstDpr = d; replaceIdx = i; }
-        }
         creature.Actions[replaceIdx] = chosen;
     }
 
-    static void ApplyFlatDamageBonus(List<ActionData> actions, double totalDeltaDpr)
+    static void ApplyDamageScale(List<ActionData> actions, double totalDeltaDpr)
     {
+        if (actions.Count == 0) return;
         var perAction = totalDeltaDpr / actions.Count;
-        var diceDelta = (int)Math.Round(perAction / CombatEstimator.HitChance);
-        if (diceDelta == 0) return;
         foreach (var action in actions)
         {
             if (action.ResolvedDamage == null) continue;
-            action.ResolvedDamage = [AddFlatModifier(action.ResolvedDamage[0], diceDelta), action.ResolvedDamage[1]];
+            var chance = action.ActionType == "save" ? CombatEstimator.SaveHitChance : CombatEstimator.HitChance;
+            var recharge = CombatEstimator.RechargeMultipliers.TryGetValue(action.Recharge ?? "", out var r) ? r : 1.0;
+            var aoe = action.AoeTargets ?? 1;
+            var effective = chance * recharge * aoe;
+            var diceDelta = effective > 0 ? (int)Math.Round(perAction / effective) : 0;
+            if (diceDelta == 0) continue;
+            action.ResolvedDamage = [ScaleDamage(action.ResolvedDamage[0], diceDelta), action.ResolvedDamage[1]];
         }
     }
 
-    static string AddFlatModifier(string formula, int delta)
+    // Handles high CR damage and balances others
+    static string ScaleDamage(string formula, int delta)
     {
         if (delta == 0) return formula;
-        var m = Regex.Match(formula.Trim(), @"^(\d+d\d+)\s*([+-]\s*\d+)?$", RegexOptions.IgnoreCase);
+        var m = Regex.Match(formula.Trim(), @"^(\d+)d(\d+)\s*([+-]\s*\d+)?$", RegexOptions.IgnoreCase);
         if (!m.Success) return formula;
-        var dice = m.Groups[1].Value;
-        var existing = m.Groups[2].Success ? int.Parse(m.Groups[2].Value.Replace(" ", "")) : 0;
-        var diceAvg = CombatEstimator.DiceAverage(dice);
-        var mod = existing + delta;
-        mod = Math.Max(mod, (int)Math.Ceiling(1 - diceAvg));
-        if (mod == 0) return dice;
-        return $"{dice}{(mod > 0 ? "+" : "")}{mod}";
+        var count = int.Parse(m.Groups[1].Value);
+        var sides = int.Parse(m.Groups[2].Value);
+        var existing = m.Groups[3].Success ? int.Parse(m.Groups[3].Value.Replace(" ", "")) : 0;
+        var faceAvg = (sides + 1) / 2.0;
+        var total = count * faceAvg + existing + delta;
+        var newCount = Math.Max(1, (int)Math.Round(total / faceAvg));
+        var remainder = (int)Math.Round(total - newCount * faceAvg);
+        if (remainder == 0) return $"{newCount}d{sides}";
+        return $"{newCount}d{sides}{(remainder > 0 ? "+" : "")}{remainder}";
     }
 }

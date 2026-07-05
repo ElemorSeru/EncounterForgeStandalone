@@ -1,7 +1,7 @@
 # Encounter Forge Standalone
 
 [![Patreon](https://img.shields.io/badge/Patreon-F96854?style=for-the-badge&logo=patreon&logoColor=white)](https://patreon.com/Elemor)
-[![Version](https://img.shields.io/badge/Version-1.0.0-success?style=for-the-badge)](https://github.com/ElemorSeru/EncounterForgeStandalone/releases/latest)
+[![Version](https://img.shields.io/badge/Version-1.1.0-success?style=for-the-badge)](https://github.com/ElemorSeru/EncounterForgeStandalone/releases/latest)
 <img alt="GitHub Downloads (all assets, latest release)" src="https://img.shields.io/github/downloads/ElemorSeru/EncounterForgeStandalone/latest/total">
 
 **Encounter Forge Standalone** is a Windows desktop application that builds brand-new, balanced NPCs on demand, sized to a party, not a generic XP table or a basic CR lookup.
